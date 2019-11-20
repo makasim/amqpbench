@@ -10,9 +10,15 @@ go get github.com/makasim/amqpbench
 ```
 
 Run:
+```bash
+$ amqpbench -rate=10 \
+            -payload="msgBody" \
+            -queue=queue-to-send \
+            -reply-queue=reply-queue \
+            -amqp="amqp://guest:guest@localhost:5672//" 
+            -rate=50 \
+            -port=3000
 ```
-amqpbench -rate=10 -payload="msgBody" -queue=queue-to-send -reply-queue=reply-queue -amqp="amqp://guest:guest@localhost:5672//" -rate=50 -port=3000
-``` 
 
 Change Rate
 ```
