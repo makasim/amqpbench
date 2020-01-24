@@ -91,24 +91,15 @@ func main() {
 	go func(reqCh chan int, respCh <-chan int) {
 		defer wg.Done()
 
-		connextra := amqpextra.New(
-			func() (*amqp.Connection, error) {
-				return amqp.Dial(amqpDsn)
-			},
-			nil,
-			log.Printf,
-			log.Printf,
-		)
+		resCh := make(chan error, 1)
 
-		connCh, closeCh := connextra.Get()
-		publisher := amqpextra.NewPublisher(
-			connCh,
-			closeCh,
-			nil,
-			intiCh,
-			log.Printf,
-			log.Printf,
-		)
+		connextra := amqpextra.Dial([]string{amqpDsn})
+		connextra.SetLogger(amqpextra.LoggerFunc(log.Printf))
+
+		publisher := connextra.Publisher()
+		publisher.Start()
+
+		<-publisher.Ready()
 
 		for {
 			select {
@@ -116,15 +107,15 @@ func main() {
 				num := <-respCh
 
 				for i := 0; i < num; i++ {
-					err := <-publisher.Publish("", queue, false, false, amqp.Publishing{
+					publisher.Publish("", queue, false, false, amqp.Publishing{
 						ContentType:   "application/json",
 						CorrelationId: uuid.New().String(),
 						ReplyTo:       replyQueue,
 						MessageId:     uuid.New().String(),
 						Body:          []byte(payload),
-					})
+					}, resCh)
 
-					if err != nil {
+					if err := <-resCh; err != nil {
 						log.Printf("publish: %v", err)
 					}
 				}
@@ -188,8 +179,4 @@ func init() {
 	}
 
 	fmt.Println(amqpDsn)
-}
-
-func intiCh(conn *amqp.Connection) (*amqp.Channel, error) {
-	return conn.Channel()
 }
